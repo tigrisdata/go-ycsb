@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/magiconair/properties"
@@ -149,7 +150,8 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	host := p.GetString(tigrisHost, "localhost")
 	port := p.GetInt(tigrisPort, 8081)
 	url := fmt.Sprintf("%s:%d", host, port)
-	conf := &config.Database{Driver: config.Driver{URL: url}}
+	token := os.Getenv("TIGRIS_ACCESS_TOKEN")
+	conf := &config.Database{Driver: config.Driver{URL: url, Token: token}}
 	db, err := tigris.OpenDatabase(ctx, conf, dbName, &userTable{})
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to tigrisDB: %s", err.Error())
