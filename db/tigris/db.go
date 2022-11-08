@@ -10,7 +10,6 @@ import (
 
 	"github.com/magiconair/properties"
 	"github.com/pingcap/go-ycsb/pkg/ycsb"
-	"github.com/tigrisdata/tigris-client-go/config"
 	"github.com/tigrisdata/tigris-client-go/driver"
 	tigris_fields "github.com/tigrisdata/tigris-client-go/fields"
 	"github.com/tigrisdata/tigris-client-go/filter"
@@ -169,7 +168,6 @@ func (t *tigrisDB) Delete(ctx context.Context, table string, key string) error {
 }
 
 func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
-	var conf *config.Database
 	ctx := context.Background()
 	dbName := p.GetString(tigrisDBName, "ycsb_tigris")
 	host := p.GetString(tigrisHost, "localhost")
@@ -178,12 +176,12 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	clientSecret := os.Getenv("TIGRIS_CLIENT_SECRET")
 	token := os.Getenv("TIGRIS_TOKEN")
 	url := fmt.Sprintf("%s:%d", host, port)
-	conf = &config.Database{Driver: config.Driver{
+	conf := tigris.Config{
 		URL:          url,
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Token:        token,
-	}}
+	}
 	proto := p.GetString(tigrisProtocol, "grpc")
 	if proto == "" {
 		proto = os.Getenv("TIGRIS_PROTOCOL")
@@ -196,7 +194,15 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 		driver.DefaultProtocol = driver.HTTP
 		conf.TLS = &tls.Config{}
 	}
-	db, err := tigris.OpenDatabase(ctx, conf, dbName, &userTable{})
+
+	client, err := tigris.NewClient(ctx, &conf)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("Got error from creating tigris client: ", err.Error())
+		}
+	}
+
+	db, err := client.OpenDatabase(ctx, dbName, &userTable{})
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("Got error from tigris during create: ", err.Error())

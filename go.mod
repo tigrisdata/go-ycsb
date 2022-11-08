@@ -13,14 +13,14 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocql/gocql v0.0.0-20181124151448-70385f88b28b
 	github.com/lib/pq v1.1.1
-	github.com/magiconair/properties v1.8.0
+	github.com/magiconair/properties v1.8.6
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/pingcap/errors v0.11.5-0.20211224045212-9687c2b0f87c
 	github.com/pkg/profile v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c
-	github.com/tigrisdata/tigris-client-go v1.0.0-beta.5
+	github.com/tigrisdata/tigris-client-go v1.0.0-beta.10
 	github.com/tikv/client-go/v2 v2.0.0-rc.0.20220222033436-79b962a84d18
 	go.mongodb.org/mongo-driver v1.5.1
 	google.golang.org/api v0.75.0
