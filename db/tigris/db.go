@@ -4,184 +4,168 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/magiconair/properties"
+	"github.com/pingcap/go-ycsb/pkg/prop"
 	"github.com/pingcap/go-ycsb/pkg/ycsb"
+	"github.com/tigrisdata/tigris-client-go/config"
 	"github.com/tigrisdata/tigris-client-go/driver"
-	tigris_fields "github.com/tigrisdata/tigris-client-go/fields"
-	"github.com/tigrisdata/tigris-client-go/filter"
-	"github.com/tigrisdata/tigris-client-go/tigris"
 )
 
 const (
-	tigrisDBName   = "tigris.dbname"
-	tigrisHost     = "tigris.host"
-	tigrisPort     = "tigris.port"
-	tigrisProtocol = "tigris.protocol"
+	tigrisDBName     = "tigris.dbname"
+	tigrisHost       = "tigris.host"
+	tigrisPort       = "tigris.port"
+	tigrisProtocol   = "tigris.protocol"
+	tigrisCollName   = "tigris.collection"
+	tigrisFieldCount = "tigris.fieldcount"
 )
 
-type userTable struct {
-	Key string `tigris:"primaryKey"`
-	//fields []userField
-	Field0 []byte
-	Field1 []byte
-	Field2 []byte
-	Field3 []byte
-	Field4 []byte
-	Field5 []byte
-	Field6 []byte
-	Field7 []byte
-	Field8 []byte
-	Field9 []byte
-}
-
-//type userField struct {
-//	key   string
-//	value []byte
-//}
-
 type tigrisDB struct {
-	db *tigris.Database
+	db driver.Database
 }
 
 type tigrisCreator struct {
 }
 
-var collection *tigris.Collection[userTable]
+var fieldCount int64
 
-func (t *tigrisDB) InitThread(ctx context.Context, threadID int, threadCount int) context.Context {
+func (t *tigrisDB) InitThread(ctx context.Context, _ int, _ int) context.Context {
+	// TODO: multiple connection here, otherwise it will hit only one tigris app server
 	return ctx
 }
 
-func (t *tigrisDB) CleanupThread(ctx context.Context) {
+func (t *tigrisDB) CleanupThread(_ context.Context) {
 }
 
-func getReadFields(fields []string) *tigris_fields.Read {
-	readFields := tigris_fields.ReadBuilder()
-	for _, fieldName := range fields {
-		readFields.Include(fieldName)
+func (t *tigrisDB) read(ctx context.Context, collection string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
+	var projection string
+	var doc driver.Document
+	var res []map[string][]byte
+
+	filter := fmt.Sprintf(`{ "Key": "%s" }`, startKey)
+	if len(fields) == 0 {
+		projection = `{}`
+	} else {
+		var included bool
+		projection = `{ "Key": true`
+		for i := int64(0); i < fieldCount; i++ {
+			included = false
+			currentFieldName := fmt.Sprintf("field%d", i)
+			for _, field := range fields {
+				if currentFieldName == field {
+					included = true
+				}
+			}
+			if included {
+				projection = projection + fmt.Sprintf(`, "%s": true`, currentFieldName)
+			} else {
+				projection = projection + fmt.Sprintf(`, "%s": false`, currentFieldName)
+			}
+		}
+		projection = projection + " }"
 	}
-	return readFields
-}
-
-func (t *tigrisDB) Read(ctx context.Context, table string, key string, fields []string) (map[string][]byte, error) {
-	readFields := getReadFields(fields)
-
-	_, err := collection.ReadOne(ctx, filter.Eq("Key", key), readFields)
+	it, err := t.db.Read(ctx, collection, driver.Filter(filter), driver.Projection{}, &driver.ReadOptions{Limit: int64(count)})
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during read: ", err.Error())
+			fmt.Println("got error during read: ", err.Error())
 		}
-		return nil, fmt.Errorf("Error while reading key %s.", key)
-	}
-	return nil, nil
-}
-
-func (t *tigrisDB) Scan(ctx context.Context, table string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
-	readFields := getReadFields(fields)
-
-	it, err := collection.ReadWithOptions(ctx, filter.Gt("Key", startKey), readFields, &tigris.ReadOptions{Limit: int64(count)})
-	if err != nil {
-		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during scan: ", err.Error())
-		}
-		return nil, fmt.Errorf("Error during scan from %s", startKey)
 	}
 	defer it.Close()
 
-	var result userTable
-	var queryRes []map[string][]byte
-	for it.Next(&result) {
-		queryRes = append(queryRes, map[string][]byte{
-			"Key":    []byte(result.Key),
-			"Field0": result.Field0,
-			"Field1": result.Field1,
-			"Field2": result.Field2,
-			"Field3": result.Field3,
-			"Field4": result.Field4,
-			"Field5": result.Field5,
-			"Field6": result.Field6,
-			"Field7": result.Field7,
-			"Field8": result.Field8,
-			"Field9": result.Field9,
-		})
+	singleMap := make(map[string][]byte)
+	for it.Next(&doc) {
+		// Implementing limit with using stop reading the iterator
+		_ = json.Unmarshal(doc, &res)
+		res = append(res, singleMap)
 	}
-	return queryRes, nil
+	return res, nil
 }
 
-func (t *tigrisDB) Update(ctx context.Context, table string, key string, values map[string][]byte) error {
-	update := tigris_fields.UpdateBuilder()
+func (t *tigrisDB) Read(ctx context.Context, collection string, key string, fields []string) (map[string][]byte, error) {
+	res, err := t.read(ctx, collection, key, 1, fields)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error during read: ", err.Error())
+		}
+	}
+	if len(res) != 1 {
+		return nil, nil
+	}
+	return res[0], nil
+}
+
+func (t *tigrisDB) Scan(ctx context.Context, collection string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
+	return t.read(ctx, collection, startKey, count, fields)
+}
+
+func (t *tigrisDB) Update(ctx context.Context, collection string, key string, values map[string][]byte) error {
+	update := `{ "$set": {`
 	for fieldName, fieldValue := range values {
-		//TODO: fix the field name capitalization with a non-deprecated function
-		update.SetF[strings.Title(fieldName)] = fieldValue
+		update = update + fmt.Sprintf(`"%s": "%s",`, fieldName, fieldValue)
 	}
-	_, err := collection.Update(ctx, filter.Eq("Key", key), update)
+	update = strings.TrimRight(update, ",")
+	update = update + ` } }`
+
+	filter := fmt.Sprintf(`{ "Key": "%s" }`, key)
+	_, err := t.db.Update(ctx, collection, driver.Filter(filter), driver.Update(update))
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during update: ", err.Error())
+			fmt.Println("got error from update: ", err.Error())
 		}
-		return fmt.Errorf("Error while updating key %s", key)
 	}
-	return nil
+	return err
 }
 
-func (t *tigrisDB) Insert(ctx context.Context, _ string, key string, values map[string][]byte) error {
-	coll := tigris.GetCollection[userTable](t.db)
-	_, err := coll.Insert(ctx,
-		&userTable{
-			Key: key,
-			//fields: fields,
-			Field0: values["field0"],
-			Field1: values["field1"],
-			Field2: values["field2"],
-			Field3: values["field3"],
-			Field4: values["field4"],
-			Field5: values["field5"],
-			Field6: values["field6"],
-			Field7: values["field7"],
-			Field8: values["field8"],
-			Field9: values["field9"],
-		},
-	)
+func (t *tigrisDB) Insert(ctx context.Context, collection string, key string, values map[string][]byte) error {
+	doc := fmt.Sprintf(`{ "Key": "%s"`, key)
+	for fieldName, fieldValue := range values {
+		doc = doc + fmt.Sprintf(`, "%s": "%s"`, fieldName, fieldValue)
+	}
+	doc = doc + " }"
 
+	_, err := t.db.Insert(ctx, collection, []driver.Document{driver.Document(doc)})
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during insert: ", err.Error())
+			fmt.Println("got error from insert: ", err.Error())
 		}
-		return fmt.Errorf("Got error during insert %s!", err.Error())
 	}
-	return nil
+	return err
 }
 
-func (t *tigrisDB) Delete(ctx context.Context, table string, key string) error {
-	_, err := collection.Delete(ctx, filter.Eq("Key", key))
+func (t *tigrisDB) Delete(ctx context.Context, collection string, key string) error {
+	filter := fmt.Sprintf(`{ "Key": "%s"`, key)
+	_, err := t.db.Delete(ctx, collection, driver.Filter(filter))
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during delete: ", err.Error())
+			fmt.Println("got error from delete: ", err.Error())
 		}
-		return fmt.Errorf("Error while deleting key %s", key)
 	}
-	return nil
+	return err
 }
 
 func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	ctx := context.Background()
-	dbName := p.GetString(tigrisDBName, "ycsb_tigris")
+	dbName := p.GetString(tigrisDBName, "ycsb")
+	collName := p.GetString(tigrisCollName, prop.TableNameDefault)
 	host := p.GetString(tigrisHost, "localhost")
 	port := p.GetInt(tigrisPort, 8081)
 	clientId := os.Getenv("TIGRIS_CLIENT_ID")
 	clientSecret := os.Getenv("TIGRIS_CLIENT_SECRET")
 	token := os.Getenv("TIGRIS_TOKEN")
 	url := fmt.Sprintf("%s:%d", host, port)
-	conf := tigris.Config{
+	fieldCount = p.GetInt64(tigrisFieldCount, prop.FieldCountDefault)
+	conf := config.Driver{
 		URL:          url,
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Token:        token,
 	}
+
 	proto := p.GetString(tigrisProtocol, "grpc")
 	if proto == "" {
 		proto = os.Getenv("TIGRIS_PROTOCOL")
@@ -195,24 +179,47 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 		conf.TLS = &tls.Config{}
 	}
 
-	client, err := tigris.NewClient(ctx, &conf)
+	client, err := driver.NewDriver(ctx, &conf)
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from creating tigris client: ", err.Error())
+			fmt.Println("got error from creating tigris client: ", err.Error())
 		}
 	}
 
-	db, err := client.OpenDatabase(ctx, dbName, &userTable{})
+	err = client.CreateDatabase(ctx, dbName)
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
-			fmt.Println("Got error from tigris during create: ", err.Error())
+			fmt.Println("got error from creating database: ", err.Error())
 		}
-		return nil, fmt.Errorf("Error connecting to tigrisDB: %s", err.Error())
 	}
+
+	db := client.UseDatabase(dbName)
+
+	schemaHead := fmt.Sprintf(`{ "title": "%s", "properties": { "Key": { "type": "string"}`, collName)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error while assembling the head the the schema: ", err.Error())
+		}
+	}
+
+	schema := schemaHead
+	for i := int64(0); i < fieldCount; i++ {
+		fieldSchema := fmt.Sprintf(`, "field%d": { "type": "string" }`, i)
+		schema = schema + fieldSchema
+	}
+
+	schema = schema + `}, "primary_key": ["Key"] }`
+
+	err = db.CreateOrUpdateCollection(ctx, collName, driver.Schema(schema))
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error while creating collection: ", err.Error())
+		}
+	}
+
 	t := &tigrisDB{
 		db: db,
 	}
-	collection = tigris.GetCollection[userTable](t.db)
 	return t, nil
 }
 
