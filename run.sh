@@ -33,6 +33,7 @@ DROPANDLOAD=${DROPANDLOAD:-0}
 ENGINE=${ENGINE:-"tigris"}
 FDB_CLUSTER_FILE=${FDB_CLUSTER_FILE:-"/mnt/fdb-config-volume/cluster-file"}
 FDB_API_VERSION=${FDB_API_VERSION:-710}
+FAILURE_RETRY_INTERVAL=${FAILURE_RETRY_INTERVAL:-3600}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -55,7 +56,9 @@ function benchmark_tigris() {
 	if [ $? -ne 0 ]
 	then
 		echo "Tigris client has problems, will exit in 30 sec"
-		sleep 30
+		echo "Doing list databases to show you the error"
+		${CLI_PATH}tigris list databases
+		sleep ${FAILURE_RETRY_INTERVAL}
 		exit 1
 	fi
 
