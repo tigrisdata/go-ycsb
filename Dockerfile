@@ -22,7 +22,7 @@ RUN GO111MODULE=on go mod download
 
 COPY . .
 
-RUN GO111MODULE=on go build -tags "foundationdb tigris" -o /go-ycsb ./cmd/*
+RUN GO11MODULE=on go build -tags "foundationdb tigris release" -o /go-ycsb ./cmd/*
 
 FROM ubuntu:jammy
 
