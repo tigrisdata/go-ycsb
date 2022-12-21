@@ -12,6 +12,8 @@ if [ -n "$TIGRIS_URL" ]; then
 	TIGRIS_PORT=$(echo "$TIGRIS_URL" | cut -d: -f2)
 fi 
 
+hostname=$(hostname)
+
 TEST_DB="${TEST_DB:-ycsb_tigris}"
 RECORDCOUNT=${RECORDCOUNT:-5000}
 OPERATIONCOUNT=${OPERATIONCOUNT:-1000000000}
@@ -34,6 +36,7 @@ ENGINE=${ENGINE:-"tigris"}
 FDB_CLUSTER_FILE=${FDB_CLUSTER_FILE:-"/mnt/fdb-config-volume/cluster-file"}
 FDB_API_VERSION=${FDB_API_VERSION:-710}
 FAILURE_RETRY_INTERVAL=${FAILURE_RETRY_INTERVAL:-3600}
+KEYPREFIX=${KEYPREFIX:-${hostname}}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -109,14 +112,14 @@ function benchmark_fdb() {
 	if [ ${DROPANDLOAD} -gt 0 ]
 	then
 		echo "Loading new database"
-		${BIN_PATH}/go-ycsb load foundationdb -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+		${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
 	fi
 	if [ "x${RUNMODE}" == "xsingle" ]
 	then
 		while true
 		do
 			echo "Running benchmark"
-				${BIN_PATH}/go-ycsb run foundationdb -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			echo "Run completed, sleeping before running again"
 			sleep 20
 		done
@@ -127,7 +130,7 @@ function benchmark_fdb() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${th}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${th}
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
 		done
