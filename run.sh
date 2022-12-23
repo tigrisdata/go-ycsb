@@ -12,7 +12,7 @@ if [ -n "$TIGRIS_URL" ]; then
 	TIGRIS_PORT=$(echo "$TIGRIS_URL" | cut -d: -f2)
 fi 
 
-hostname=$(hostname)
+default_keyprefix=$(echo $RANDOM | md5sum | awk '{print $1}' | cut -c -6)
 
 TEST_DB="${TEST_DB:-ycsb_tigris}"
 RECORDCOUNT=${RECORDCOUNT:-5000}
@@ -36,7 +36,7 @@ ENGINE=${ENGINE:-"tigris"}
 FDB_CLUSTER_FILE=${FDB_CLUSTER_FILE:-"/mnt/fdb-config-volume/cluster-file"}
 FDB_API_VERSION=${FDB_API_VERSION:-710}
 FAILURE_RETRY_INTERVAL=${FAILURE_RETRY_INTERVAL:-3600}
-KEYPREFIX=${KEYPREFIX:-${hostname}}
+KEYPREFIX=${KEYPREFIX:-${default_keyprefix}}
 FIELDLENGTH=${FIELDLENGTH:-100}
 FIELDCOUNT=${FIELDCOUNT:-10}
 
