@@ -37,6 +37,8 @@ FDB_CLUSTER_FILE=${FDB_CLUSTER_FILE:-"/mnt/fdb-config-volume/cluster-file"}
 FDB_API_VERSION=${FDB_API_VERSION:-710}
 FAILURE_RETRY_INTERVAL=${FAILURE_RETRY_INTERVAL:-3600}
 KEYPREFIX=${KEYPREFIX:-${hostname}}
+FIELDLENGTH=${FIELDLENGTH:-100}
+FIELDCOUNT=${FIELDCOUNT:-10}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -76,7 +78,7 @@ function benchmark_tigris() {
 		${CLI_PATH}tigris drop database $TEST_DB
 		sleep 10
 		echo "Loading new database"
-			${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+			${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
 	fi
 
 	if [ "x${RUNMODE}" == "xsingle" ]
@@ -84,7 +86,7 @@ function benchmark_tigris() {
 		while true
 		do
 			echo "Running benchmark"
-				${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			echo "Run completed, sleeping before running again"
 			sleep 20
 		done
@@ -95,7 +97,7 @@ function benchmark_tigris() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -P workloads/dynamic -p threadcount=${th}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
 		done
@@ -112,14 +114,14 @@ function benchmark_fdb() {
 	if [ ${DROPANDLOAD} -gt 0 ]
 	then
 		echo "Loading new database"
-		${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+		${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
 	fi
 	if [ "x${RUNMODE}" == "xsingle" ]
 	then
 		while true
 		do
 			echo "Running benchmark"
-				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			echo "Run completed, sleeping before running again"
 			sleep 20
 		done
@@ -130,7 +132,7 @@ function benchmark_fdb() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -P workloads/dynamic -p threadcount=${th}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
 		done
