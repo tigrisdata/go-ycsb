@@ -39,6 +39,9 @@ FAILURE_RETRY_INTERVAL=${FAILURE_RETRY_INTERVAL:-3600}
 KEYPREFIX=${KEYPREFIX:-${default_keyprefix}}
 FIELDLENGTH=${FIELDLENGTH:-100}
 FIELDCOUNT=${FIELDCOUNT:-10}
+YCSB_LOGS_ON_STDOUT=${YCSB_LOGS_ON_STDOUT:-0}
+# Only in multiple threads mode for the last run, otherwise the log file is not limited in size
+YCSB_LOG_FILE=${YCSB_LOG_FILE:-/tmp/ycsb.log}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -78,7 +81,12 @@ function benchmark_tigris() {
 		${CLI_PATH}tigris drop database $TEST_DB
 		sleep 10
 		echo "Loading new database"
-			${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+			then
+				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+			else
+				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT} > ${YCSB_LOG_FILE}
+			fi
 	fi
 
 	if [ "x${RUNMODE}" == "xsingle" ]
@@ -86,7 +94,12 @@ function benchmark_tigris() {
 		while true
 		do
 			echo "Running benchmark"
-				${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+				then
+					${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				else
+					${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > /dev/null
+				fi
 			echo "Run completed, sleeping before running again"
 			sleep 20
 		done
@@ -97,7 +110,12 @@ function benchmark_tigris() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
+				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+				then
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
+				else
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
+				fi
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
 		done
@@ -114,14 +132,25 @@ function benchmark_fdb() {
 	if [ ${DROPANDLOAD} -gt 0 ]
 	then
 		echo "Loading new database"
-		${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+		if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+		then
+			${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+		else
+			${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT} > ${YCSB_LOG_FILE}
+		fi
 	fi
 	if [ "x${RUNMODE}" == "xsingle" ]
 	then
 		while true
 		do
 			echo "Running benchmark"
+			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+			then
 				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+			else
+				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > /dev/null
+			fi
+
 			echo "Run completed, sleeping before running again"
 			sleep 20
 		done
@@ -132,7 +161,12 @@ function benchmark_fdb() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
+				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
+				then
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
+				else
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
+				fi
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
 		done
