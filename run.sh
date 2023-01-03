@@ -65,7 +65,7 @@ function benchmark_tigris() {
 	then
 		echo "Tigris client has problems, will exit in 30 sec"
 		echo "Doing list databases to show you the error"
-		${CLI_PATH}tigris list databases
+		${CLI_PATH}tigris list projects
 		sleep ${FAILURE_RETRY_INTERVAL}
 		exit 1
 	fi
@@ -78,8 +78,9 @@ function benchmark_tigris() {
 	if [ "${DROPANDLOAD}" -gt 0 ]
 	then
 		echo "Dropping test database"
-		${CLI_PATH}tigris drop database $TEST_DB
+		${CLI_PATH}tigris delete-project $TEST_DB --force
 		sleep 10
+		${CLI_PATH}tigris create project $TEST_DB
 		echo "Loading new database"
 			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 			then
