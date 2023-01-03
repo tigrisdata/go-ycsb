@@ -96,12 +96,12 @@ function benchmark_tigris() {
 			echo "Running benchmark"
 				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 				then
-					${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 				else
-					${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > /dev/null
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
 				fi
 			echo "Run completed, sleeping before running again"
-			sleep 20
+			sleep ${RUNTHREADSLEEPINTERVAL}
 		done
 	elif [ "x${RUNMODE}" == "xmultiple_threads" ]
 	then
@@ -146,13 +146,13 @@ function benchmark_fdb() {
 			echo "Running benchmark"
 			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 			then
-				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			else
-				${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > /dev/null
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEYPREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
 			fi
 
 			echo "Run completed, sleeping before running again"
-			sleep 20
+			sleep ${RUNTHREADSLEEPINTERVAL}
 		done
 	elif [ "x${RUNMODE}" == "xmultiple_threads" ]
 	then
