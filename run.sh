@@ -42,6 +42,8 @@ FIELDCOUNT=${FIELDCOUNT:-10}
 YCSB_LOGS_ON_STDOUT=${YCSB_LOGS_ON_STDOUT:-0}
 # Only in multiple threads mode for the last run, otherwise the log file is not limited in size
 YCSB_LOG_FILE=${YCSB_LOG_FILE:-/tmp/ycsb.log}
+MAXSCANLENGTH=${MAXSCANLENGTH:-1000}
+SCANLENGTHDISTRIBUTION=${SCANLENGTHDISTRIBUTION:-uniform}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -54,7 +56,10 @@ updateproportion=${UPDATEPROPORTION}
 scanproportion=${SCANPROPORTION}
 insertproportion=${INSERTPROPORTION}
 
-requestdistribution=${REQUESTDISTRIBUTION}"
+requestdistribution=${REQUESTDISTRIBUTION}
+maxscanlength=${MAXSCANLENGTH}
+scanlengthdistribution=${SCANLENGTHDISTRIBUTION}
+"
 
 function benchmark_tigris() {
 	# Check if the client works
