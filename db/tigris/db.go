@@ -186,7 +186,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 		}
 	}
 
-	err = client.CreateDatabase(ctx, dbName)
+	_, err = client.CreateProject(ctx, dbName)
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error from creating database: ", err.Error())
