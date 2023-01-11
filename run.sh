@@ -44,6 +44,7 @@ YCSB_LOGS_ON_STDOUT=${YCSB_LOGS_ON_STDOUT:-0}
 YCSB_LOG_FILE=${YCSB_LOG_FILE:-/tmp/ycsb.log}
 MAXSCANLENGTH=${MAXSCANLENGTH:-1000}
 SCANLENGTHDISTRIBUTION=${SCANLENGTHDISTRIBUTION:-uniform}
+TIGRIS_POSTFIX_TESTDB=${TIGRIS_POSTFIX_TESTDB:-0}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -79,6 +80,11 @@ function benchmark_tigris() {
 	echo "Using TIGRIS_PORT ${TIGRIS_PORT}"
 	echo "Using TEST_DB ${TEST_DB}"
 	echo "Using LOADTHREADCOUNT ${LOADTHREADCOUNT}"
+
+	if [ "${TIGRIS_POSTFIX_TESTDB}" -gt 0 ]
+	then
+		TEST_DB="${TEST_DB}_${default_keyprefix}"
+	fi
 
 	if [ "${DROPANDLOAD}" -gt 0 ]
 	then
