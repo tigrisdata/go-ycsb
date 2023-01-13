@@ -74,8 +74,8 @@ func (h *histogram) Summary() string {
 	buf.WriteString(fmt.Sprintf("Min(us): %d, ", res[MIN]))
 	buf.WriteString(fmt.Sprintf("Max(us): %d, ", res[MAX]))
 	buf.WriteString(fmt.Sprintf("50th(us): %d, ", res[PER50TH]))
-	buf.WriteString(fmt.Sprintf("95th(us): %d", res[PER95TH]))
-	buf.WriteString(fmt.Sprintf("99th(us): %d, ", res[PER99TH]))
+	buf.WriteString(fmt.Sprintf("95th(us): %d, ", res[PER95TH]))
+	buf.WriteString(fmt.Sprintf("99th(us): %d", res[PER99TH]))
 
 	return buf.String()
 }
