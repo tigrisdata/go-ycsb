@@ -128,7 +128,7 @@ func (t *tigrisDB) Insert(ctx context.Context, collection string, key string, va
 	}
 	doc = doc + " }"
 
-	_, err := t.db.Insert(ctx, collection, []driver.Document{driver.Document(doc)})
+	_, err := t.db.Replace(ctx, collection, []driver.Document{driver.Document(doc)})
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error from insert: ", err.Error())
