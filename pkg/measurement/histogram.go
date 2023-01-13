@@ -19,29 +19,31 @@ import (
 	"sort"
 	"time"
 
+	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/magiconair/properties"
 	"github.com/pingcap/go-ycsb/pkg/util"
 	"github.com/pingcap/go-ycsb/pkg/ycsb"
-	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
 )
 
 type histogram struct {
-	boundCounts   util.ConcurrentMap
-	startTime     time.Time
-	hist *hdrhistogram.Histogram
+	boundCounts util.ConcurrentMap
+	startTime   time.Time
+	hist        *hdrhistogram.Histogram
 }
 
 // Metric name.
 const (
-	ELAPSED                 = "ELAPSED"
-	COUNT                   = "COUNT"
-	QPS                     = "QPS"
-	AVG                     = "AVG"
-	MIN                     = "MIN"
-	MAX                     = "MAX"
-	PER99TH                 = "PER99TH"
-	PER999TH                = "PER999TH"
-	PER9999TH               = "PER9999TH"
+	ELAPSED   = "ELAPSED"
+	COUNT     = "COUNT"
+	QPS       = "QPS"
+	AVG       = "AVG"
+	MIN       = "MIN"
+	MAX       = "MAX"
+	PER50TH   = "PER50TH"
+	PER95TH   = "PER95TH"
+	PER99TH   = "PER99TH"
+	PER999TH  = "PER999TH"
+	PER9999TH = "PER9999TH"
 )
 
 func (h *histogram) Info() ycsb.MeasurementInfo {
@@ -71,9 +73,9 @@ func (h *histogram) Summary() string {
 	buf.WriteString(fmt.Sprintf("Avg(us): %d, ", res[AVG]))
 	buf.WriteString(fmt.Sprintf("Min(us): %d, ", res[MIN]))
 	buf.WriteString(fmt.Sprintf("Max(us): %d, ", res[MAX]))
+	buf.WriteString(fmt.Sprintf("50th(us): %d, ", res[PER50TH]))
+	buf.WriteString(fmt.Sprintf("95th(us): %d", res[PER95TH]))
 	buf.WriteString(fmt.Sprintf("99th(us): %d, ", res[PER99TH]))
-	buf.WriteString(fmt.Sprintf("99.9th(us): %d, ", res[PER999TH]))
-	buf.WriteString(fmt.Sprintf("99.99th(us): %d", res[PER9999TH]))
 
 	return buf.String()
 }
@@ -87,6 +89,8 @@ func (h *histogram) getInfo() map[string]interface{} {
 	bounds := h.boundCounts.Keys()
 	sort.Ints(bounds)
 
+	per50 := h.hist.ValueAtPercentile(50)
+	per95 := h.hist.ValueAtPercentile(95)
 	per99 := h.hist.ValueAtPercentile(99)
 	per999 := h.hist.ValueAtPercentile(99.9)
 	per9999 := h.hist.ValueAtPercentile(99.99)
@@ -100,10 +104,11 @@ func (h *histogram) getInfo() map[string]interface{} {
 	res[AVG] = avg
 	res[MIN] = min
 	res[MAX] = max
+	res[PER50TH] = per50
+	res[PER95TH] = per95
 	res[PER99TH] = per99
 	res[PER999TH] = per999
 	res[PER9999TH] = per9999
-
 	return res
 }
 

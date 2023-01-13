@@ -16,6 +16,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/go-ycsb/metrics"
+	"github.com/uber-go/tally"
+	promreporter "github.com/uber-go/tally/prometheus"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -80,6 +84,11 @@ var (
 	globalDB       ycsb.DB
 	globalWorkload ycsb.Workload
 	globalProps    *properties.Properties
+
+	RootScope       tally.Scope
+	ThroughputScope tally.Scope
+	RespTimeScope   tally.Scope
+	PromReporter    promreporter.Reporter
 )
 
 func initialGlobal(dbName string, onProperties func()) {
@@ -133,6 +142,19 @@ func main() {
 
 	globalContext, globalCancel = context.WithCancel(context.Background())
 
+	var tallyCloser io.Closer
+
+	PromReporter = promreporter.NewReporter(promreporter.Options{})
+	RootScope, tallyCloser = tally.NewRootScope(tally.ScopeOptions{
+		Tags:           map[string]string{},
+		CachedReporter: PromReporter,
+		Separator:      promreporter.DefaultSeparator,
+	}, 1*time.Second)
+	defer tallyCloser.Close()
+
+	ThroughputScope = RootScope.SubScope("qps")
+	RespTimeScope = RootScope.SubScope("rt")
+
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
 		syscall.SIGHUP,
@@ -141,6 +163,10 @@ func main() {
 		syscall.SIGQUIT)
 
 	closeDone := make(chan struct{}, 1)
+
+	metrics.InitializeMetrics()
+	go metrics.ServeHTTP()
+
 	go func() {
 		sig := <-sc
 		fmt.Printf("\nGot signal [%v] to exit.\n", sig)

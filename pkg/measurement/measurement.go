@@ -15,6 +15,8 @@ package measurement
 
 import (
 	"fmt"
+	"github.com/pingcap/go-ycsb/metrics"
+	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -61,6 +63,21 @@ func (m *measurement) output() {
 
 	for _, op := range keys {
 		fmt.Printf("%-6s - %s\n", op, m.opMeasurement[op].Summary())
+		info := m.opMeasurement[op].Info()
+		qps := info.Get("QPS").(float64)
+		p50 := float64(info.Get("PER50TH").(int64))
+		p95 := float64(info.Get("PER95TH").(int64))
+		p99 := float64(info.Get("PER99TH").(int64))
+
+		keyPrefix := os.Getenv("KEY_PREFIX")
+		if keyPrefix == "" {
+			keyPrefix = "default_keyprefix"
+		}
+
+		metrics.ThroughputScope.Tagged(map[string]string{"op": op, "key_prefix": keyPrefix}).Gauge("qps").Update(qps)
+		metrics.ResptimeScope.Tagged(map[string]string{"op": op, "key_prefix": keyPrefix, "quantile": "0.5"}).Gauge("time").Update(p50)
+		metrics.ResptimeScope.Tagged(map[string]string{"op": op, "key_prefix": keyPrefix, "quantile": "0.95"}).Gauge("time").Update(p95)
+		metrics.ResptimeScope.Tagged(map[string]string{"op": op, "key_prefix": keyPrefix, "quantile": "0.99"}).Gauge("time").Update(p99)
 	}
 }
 
