@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	tigrisDBName   = "tigris.dbname"
-	tigrisHost     = "tigris.host"
-	tigrisPort     = "tigris.port"
-	tigrisProtocol = "tigris.protocol"
-	tigrisCollName = "tigris.collection"
+	tigrisDBName          = "tigris.dbname"
+	tigrisHost            = "tigris.host"
+	tigrisPort            = "tigris.port"
+	tigrisProtocol        = "tigris.protocol"
+	tigrisCollName        = "tigris.collection"
+	tigrisIndexFieldCount = "tigris.indexfieldcount"
 )
 
 type tigrisDB struct {
@@ -158,6 +159,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	token := os.Getenv("TIGRIS_TOKEN")
 	url := fmt.Sprintf("%s:%d", host, port)
 	fieldCount = p.GetInt64(prop.FieldCount, prop.FieldCountDefault)
+	indexfieldCount := p.GetInt64(tigrisIndexFieldCount, 0)
 	conf := config.Driver{
 		URL:          url,
 		ClientID:     clientId,
@@ -202,8 +204,14 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	}
 
 	schema := schemaHead
+	indexedFields := int64(0)
 	for i := int64(0); i < fieldCount; i++ {
-		fieldSchema := fmt.Sprintf(`, "field%d": { "type": "string" }`, i)
+		index := false
+		if indexedFields <= indexfieldCount {
+			index = true
+			indexedFields += 1
+		}
+		fieldSchema := fmt.Sprintf(`, "field%d": { "type": "string", "index": %t}`, i, index)
 		schema = schema + fieldSchema
 	}
 
