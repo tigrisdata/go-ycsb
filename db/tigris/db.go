@@ -148,6 +148,17 @@ func (t *tigrisDB) Delete(ctx context.Context, collection string, key string) er
 	return err
 }
 
+type Field struct {
+	FieldType string `json:"type"`
+	Index     bool   `json:"index"`
+}
+
+type Schema struct {
+	Title      string           `json:"title"`
+	Properties map[string]Field `json:"properties"`
+	PrimaryKey []string         `json:"primary_key"`
+}
+
 func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	ctx := context.Background()
 	dbName := p.GetString(tigrisDBName, "ycsb")
@@ -196,14 +207,23 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 
 	db := client.UseDatabase(dbName)
 
-	schemaHead := fmt.Sprintf(`{ "title": "%s", "properties": { "Key": { "type": "string"}`, collName)
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error while assembling the head the the schema: ", err.Error())
 		}
 	}
 
-	schema := schemaHead
+	schema := Schema{
+		Title: collName,
+		Properties: map[string]Field{
+			"Key": {
+				FieldType: "string",
+				Index:     false,
+			},
+		},
+		PrimaryKey: []string{"Key"},
+	}
+
 	indexedFields := int64(0)
 	for i := int64(0); i < fieldCount; i++ {
 		index := false
@@ -211,13 +231,23 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 			index = true
 			indexedFields += 1
 		}
-		fieldSchema := fmt.Sprintf(`, "field%d": { "type": "string", "index": %t}`, i, index)
-		schema = schema + fieldSchema
+
+		name := fmt.Sprintf("field%d", i)
+		schema.Properties[name] = Field{
+			FieldType: "string",
+			Index:     index,
+		}
 	}
 
-	schema = schema + `}, "primary_key": ["Key"] }`
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error while assembling the head the the schema: ", err.Error())
+		}
+		return nil, err
+	}
 
-	err = db.CreateOrUpdateCollection(ctx, collName, driver.Schema(schema))
+	err = db.CreateOrUpdateCollection(ctx, collName, driver.Schema(string(raw)))
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error while creating collection: ", err.Error())
