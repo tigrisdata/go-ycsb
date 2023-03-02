@@ -17,12 +17,11 @@ import (
 )
 
 const (
-	tigrisDBName     = "tigris.dbname"
-	tigrisHost       = "tigris.host"
-	tigrisPort       = "tigris.port"
-	tigrisProtocol   = "tigris.protocol"
-	tigrisCollName   = "tigris.collection"
-	tigrisFieldCount = "tigris.fieldcount"
+	tigrisDBName   = "tigris.dbname"
+	tigrisHost     = "tigris.host"
+	tigrisPort     = "tigris.port"
+	tigrisProtocol = "tigris.protocol"
+	tigrisCollName = "tigris.collection"
 )
 
 type tigrisDB struct {
@@ -158,7 +157,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	clientSecret := os.Getenv("TIGRIS_CLIENT_SECRET")
 	token := os.Getenv("TIGRIS_TOKEN")
 	url := fmt.Sprintf("%s:%d", host, port)
-	fieldCount = p.GetInt64(tigrisFieldCount, prop.FieldCountDefault)
+	fieldCount = p.GetInt64(prop.FieldCount, prop.FieldCountDefault)
 	conf := config.Driver{
 		URL:          url,
 		ClientID:     clientId,
