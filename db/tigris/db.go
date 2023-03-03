@@ -53,7 +53,7 @@ func (t *tigrisDB) read(ctx context.Context, collection string, startKey string,
 	if indexRead {
 		filter["secondaryKey"] = startKey
 	} else {
-		filter["key"] = startKey
+		filter["Key"] = startKey
 	}
 
 	var included bool
