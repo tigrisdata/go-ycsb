@@ -47,6 +47,7 @@ SCANLENGTHDISTRIBUTION=${SCANLENGTHDISTRIBUTION:-uniform}
 TIGRIS_POSTFIX_TESTDB=${TIGRIS_POSTFIX_TESTDB:-0}
 TIGRIS_INDEX_FIELDCOUNT=${TIGRIS_INDEX_FIELDCOUNT:-0}
 TIGRIS_READ_INDEX=${TIGRIS_READ_INDEX:-false}
+TIGRIS_DUPLICATE_PK=${TIGRIS_DUPLICATE_PK:-false}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -99,9 +100,9 @@ function benchmark_tigris() {
 		echo "Loading new database"
 			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 			then
-				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
+				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
 			else
-				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT} > ${YCSB_LOG_FILE}
+				${BIN_PATH}/go-ycsb load tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT} > ${YCSB_LOG_FILE}
 			fi
 	fi
 
@@ -112,9 +113,9 @@ function benchmark_tigris() {
 			echo "Running benchmark"
 				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 				then
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 				else
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
 				fi
 			echo "Run completed, sleeping before running again"
 			sleep ${RUNTHREADSLEEPINTERVAL}
@@ -128,9 +129,9 @@ function benchmark_tigris() {
 				echo "Running benchmark for ${th} thread(s)"
 				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 				then
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${th}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${th}
 				else
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexread="${TIGRIS_READ_INDEX}" -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run tigris -p tigris.host="$TIGRIS_HOST" -p tigris.port="$TIGRIS_PORT" -p tigris.dbname="$TEST_DB" -p fieldcount="${FIELDCOUNT}" -p tigris.indexfieldcount="${TIGRIS_INDEX_FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p tigris.indexread="${TIGRIS_READ_INDEX}" -p tigris.duplicatepk="${TIGRIS_DUPLICATE_PK}" -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
 				fi
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
