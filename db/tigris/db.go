@@ -24,6 +24,8 @@ const (
 	tigrisCollName        = "tigris.collection"
 	tigrisIndexFieldCount = "tigris.indexfieldcount"
 	tigrisIndexRead       = "tigris.indexread"
+	pkFieldName           = "Key"
+	skFieldName           = "secondaryKey"
 )
 
 type tigrisDB struct {
@@ -44,22 +46,31 @@ func (t *tigrisDB) InitThread(ctx context.Context, _ int, _ int) context.Context
 func (t *tigrisDB) CleanupThread(_ context.Context) {
 }
 
-func (t *tigrisDB) read(ctx context.Context, collection string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
+func (t *tigrisDB) read(ctx context.Context, collection string, startKey string, scan bool, count int, fields []string) ([]map[string][]byte, error) {
 	var doc driver.Document
 	var res []map[string][]byte
-	filter := make(map[string]string)
 	projection := make(map[string]bool)
 
+	fieldName := pkFieldName
 	if indexRead {
-		filter["secondaryKey"] = startKey
-	} else {
-		filter["key"] = startKey
+		fieldName = skFieldName
+	}
+
+	queryType := "$eq"
+	if scan && indexRead {
+		queryType = "$gte"
+	}
+
+	filter := map[string]interface{}{
+		fieldName: map[string]interface{}{
+			queryType: startKey,
+		},
 	}
 
 	var included bool
-	projection["Key"] = true
+	projection[pkFieldName] = true
 	if indexRead {
-		projection["secondaryKey"] = true
+		projection[skFieldName] = true
 	}
 	for i := int64(0); i < fieldCount; i++ {
 		included = false
@@ -105,7 +116,7 @@ func (t *tigrisDB) read(ctx context.Context, collection string, startKey string,
 }
 
 func (t *tigrisDB) Read(ctx context.Context, collection string, key string, fields []string) (map[string][]byte, error) {
-	res, err := t.read(ctx, collection, key, 1, fields)
+	res, err := t.read(ctx, collection, key, false, 1, fields)
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error during read: ", err.Error())
@@ -118,7 +129,7 @@ func (t *tigrisDB) Read(ctx context.Context, collection string, key string, fiel
 }
 
 func (t *tigrisDB) Scan(ctx context.Context, collection string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
-	return t.read(ctx, collection, startKey, count, fields)
+	return t.read(ctx, collection, startKey, true, count, fields)
 }
 
 func (t *tigrisDB) Update(ctx context.Context, collection string, key string, values map[string][]byte) error {
@@ -136,8 +147,18 @@ func (t *tigrisDB) Update(ctx context.Context, collection string, key string, va
 		}
 		return err
 	}
-	filter := fmt.Sprintf(`{ "Key": "%s" }`, key)
-	_, err = t.db.Update(ctx, collection, driver.Filter(filter), driver.Update(updateJson))
+	filter := map[string]string{
+		pkFieldName: key,
+	}
+	filterJSON, err := json.Marshal(filter)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error while building the read projection: ", err.Error())
+		}
+		return err
+	}
+
+	_, err = t.db.Update(ctx, collection, driver.Filter(filterJSON), driver.Update(updateJson))
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error from update: ", err.Error())
@@ -148,12 +169,12 @@ func (t *tigrisDB) Update(ctx context.Context, collection string, key string, va
 
 func (t *tigrisDB) Insert(ctx context.Context, collection string, key string, values map[string][]byte) error {
 	doc := make(map[string]string)
-	doc["Key"] = key
+	doc[pkFieldName] = key
 	for fieldName, fieldValue := range values {
 		doc[fieldName] = string(fieldValue)
 	}
 	if indexRead {
-		doc["secondaryKey"] = key
+		doc[skFieldName] = key
 	}
 
 	docJson, err := json.Marshal(doc)
@@ -174,8 +195,17 @@ func (t *tigrisDB) Insert(ctx context.Context, collection string, key string, va
 }
 
 func (t *tigrisDB) Delete(ctx context.Context, collection string, key string) error {
-	filter := fmt.Sprintf(`{ "Key": "%s"`, key)
-	_, err := t.db.Delete(ctx, collection, driver.Filter(filter))
+	filter := map[string]string{
+		pkFieldName: key,
+	}
+	filterJSON, err := json.Marshal(filter)
+	if err != nil {
+		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
+			fmt.Println("got error while building the read projection: ", err.Error())
+		}
+		return err
+	}
+	_, err = t.db.Delete(ctx, collection, driver.Filter(filterJSON))
 	if err != nil {
 		if os.Getenv("TIGRIS_PRINT_ERRORS") != "" {
 			fmt.Println("got error from delete: ", err.Error())
@@ -253,12 +283,12 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	schema := Schema{
 		Title: collName,
 		Properties: map[string]Field{
-			"Key": {
+			pkFieldName: {
 				FieldType: "string",
 				Index:     false,
 			},
 		},
-		PrimaryKey: []string{"Key"},
+		PrimaryKey: []string{pkFieldName},
 	}
 
 	indexedFields := int64(0)
@@ -280,7 +310,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	// We create another field that is exactly the same values as "Key"
 	// But we can filter by this field when reading to use the secondary index
 	if indexRead {
-		schema.Properties["secondaryKey"] = Field{
+		schema.Properties[skFieldName] = Field{
 			FieldType: "string",
 			Index:     true,
 		}
