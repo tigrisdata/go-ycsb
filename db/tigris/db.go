@@ -17,15 +17,16 @@ import (
 )
 
 const (
-	tigrisDBName          = "tigris.dbname"
-	tigrisHost            = "tigris.host"
-	tigrisPort            = "tigris.port"
-	tigrisProtocol        = "tigris.protocol"
-	tigrisCollName        = "tigris.collection"
-	tigrisIndexFieldCount = "tigris.indexfieldcount"
-	tigrisIndexRead       = "tigris.indexread"
-	pkFieldName           = "Key"
-	skFieldName           = "secondaryKey"
+	tigrisDBName                 = "tigris.dbname"
+	tigrisHost                   = "tigris.host"
+	tigrisPort                   = "tigris.port"
+	tigrisProtocol               = "tigris.protocol"
+	tigrisCollName               = "tigris.collection"
+	tigrisIndexFieldCount        = "tigris.indexfieldcount"
+	tigrisDuplicatePkAsSecondary = "tigris.duplicatepk"
+	tigrisIndexRead              = "tigris.indexread"
+	pkFieldName                  = "Key"
+	skFieldName                  = "secondaryKey"
 )
 
 type tigrisDB struct {
@@ -238,6 +239,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	fieldCount = p.GetInt64(prop.FieldCount, prop.FieldCountDefault)
 	indexfieldCount := p.GetInt64(tigrisIndexFieldCount, 0)
 	indexRead = p.GetBool(tigrisIndexRead, false)
+	duplicatePk := p.GetBool(tigrisDuplicatePkAsSecondary, false)
 	conf := config.Driver{
 		URL:          url,
 		ClientID:     clientId,
@@ -309,7 +311,7 @@ func (c tigrisCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	// To force a read from the secondary index
 	// We create another field that is exactly the same values as "Key"
 	// But we can filter by this field when reading to use the secondary index
-	if indexRead {
+	if duplicatePk {
 		schema.Properties[skFieldName] = Field{
 			FieldType: "string",
 			Index:     true,
