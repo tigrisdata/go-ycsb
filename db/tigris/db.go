@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/magiconair/properties"
 	"github.com/pingcap/go-ycsb/pkg/prop"
@@ -27,6 +28,11 @@ const (
 	tigrisIndexRead              = "tigris.indexread"
 	pkFieldName                  = "Key"
 	skFieldName                  = "secondaryKey"
+	readThrottleDuration         = "READ_THROTTLE_DURATION"
+	scanThrottleDuration         = "SCAN_THROTTLE_DURATION"
+	updateThrottleDuration       = "UPDATE_THROTTLE_DURATION"
+	insertThrottleDuration       = "INSERT_THROTTLE_DURATION"
+	deleteThrottleDuration       = "DELETE_THROTTLE_DURATION"
 )
 
 type tigrisDB struct {
@@ -45,6 +51,19 @@ func (t *tigrisDB) InitThread(ctx context.Context, _ int, _ int) context.Context
 }
 
 func (t *tigrisDB) CleanupThread(_ context.Context) {
+}
+
+func throttle(varName string) {
+	throttleStr := os.Getenv(varName)
+	if throttleStr == "" {
+		return
+	}
+	throttleDuration, err := time.ParseDuration(throttleStr)
+	if err != nil {
+		fmt.Println("Failed to parse throttle duration for ", varName, " value: ", throttleStr)
+		return
+	}
+	time.Sleep(throttleDuration)
 }
 
 func (t *tigrisDB) read(ctx context.Context, collection string, startKey string, scan bool, count int, fields []string) ([]map[string][]byte, error) {
@@ -113,6 +132,7 @@ func (t *tigrisDB) read(ctx context.Context, collection string, startKey string,
 		_ = json.Unmarshal(doc, &res)
 		res = append(res, singleMap)
 	}
+
 	return res, nil
 }
 
@@ -126,10 +146,12 @@ func (t *tigrisDB) Read(ctx context.Context, collection string, key string, fiel
 	if len(res) != 1 {
 		return nil, nil
 	}
+	throttle(readThrottleDuration)
 	return res[0], nil
 }
 
 func (t *tigrisDB) Scan(ctx context.Context, collection string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
+	throttle(scanThrottleDuration)
 	return t.read(ctx, collection, startKey, true, count, fields)
 }
 
@@ -165,6 +187,7 @@ func (t *tigrisDB) Update(ctx context.Context, collection string, key string, va
 			fmt.Println("got error from update: ", err.Error())
 		}
 	}
+	throttle(updateThrottleDuration)
 	return err
 }
 
@@ -192,6 +215,7 @@ func (t *tigrisDB) Insert(ctx context.Context, collection string, key string, va
 			fmt.Println("got error from insert: ", err.Error())
 		}
 	}
+	throttle(insertThrottleDuration)
 	return err
 }
 
@@ -212,6 +236,7 @@ func (t *tigrisDB) Delete(ctx context.Context, collection string, key string) er
 			fmt.Println("got error from delete: ", err.Error())
 		}
 	}
+	throttle(deleteThrottleDuration)
 	return err
 }
 
