@@ -28,21 +28,24 @@ import (
 )
 
 const (
-	fdbClusterFile = "fdb.clusterfile"
-	fdbDatabase    = "fdb.dbname"
-	fdbAPIVersion  = "fdb.apiversion"
+	fdbClusterFile   = "fdb.clusterfile"
+	fdbDatabase      = "fdb.dbname"
+	fdbAPIVersion    = "fdb.apiversion"
+	fdbDrReadEnabled = "fdb.drreads"
 )
 
 type fDB struct {
-	db      fdb.Database
-	r       *util.RowCodec
-	bufPool *util.BufPool
+	db            fdb.Database
+	r             *util.RowCodec
+	bufPool       *util.BufPool
+	drReadEnabled bool
 }
 
 func createDB(p *properties.Properties) (ycsb.DB, error) {
 	clusterFile := p.GetString(fdbClusterFile, "/etc/foundationdb/fdb.cluster")
 	database := p.GetString(fdbDatabase, "DB")
 	apiVersion := p.GetInt(fdbAPIVersion, 710)
+	drReadEnabled := p.GetBool(fdbDrReadEnabled, true)
 
 	fdb.MustAPIVersion(apiVersion)
 
@@ -54,9 +57,10 @@ func createDB(p *properties.Properties) (ycsb.DB, error) {
 	bufPool := util.NewBufPool()
 
 	return &fDB{
-		db:      db,
-		r:       util.NewRowCodec(p),
-		bufPool: bufPool,
+		db:            db,
+		r:             util.NewRowCodec(p),
+		bufPool:       bufPool,
+		drReadEnabled: drReadEnabled,
 	}, nil
 }
 
@@ -87,6 +91,9 @@ func (db *fDB) getEndRowKey(table string) []byte {
 func (db *fDB) Read(ctx context.Context, table string, key string, fields []string) (map[string][]byte, error) {
 	rowKey := db.getRowKey(table, key)
 	row, err := db.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if db.drReadEnabled {
+			tr.Options().SetReadLockAware()
+		}
 		f := tr.Get(fdb.Key(rowKey))
 		return f.Get()
 	})
@@ -103,6 +110,10 @@ func (db *fDB) Read(ctx context.Context, table string, key string, fields []stri
 func (db *fDB) Scan(ctx context.Context, table string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
 	rowKey := db.getRowKey(table, startKey)
 	res, err := db.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if db.drReadEnabled {
+			tr.Options().SetReadLockAware()
+		}
+
 		r := fdb.KeyRange{
 			Begin: fdb.Key(rowKey),
 			End:   fdb.Key(db.getEndRowKey(table)),
@@ -138,6 +149,10 @@ func (db *fDB) Scan(ctx context.Context, table string, startKey string, count in
 func (db *fDB) Update(ctx context.Context, table string, key string, values map[string][]byte) error {
 	rowKey := db.getRowKey(table, key)
 	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
+		if db.drReadEnabled {
+			tr.Options().SetReadLockAware()
+		}
+
 		f := tr.Get(fdb.Key(rowKey))
 		row, err := f.Get()
 		if err != nil {
@@ -182,6 +197,10 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 
 	rowKey := db.getRowKey(table, key)
 	_, err = db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
+		if db.drReadEnabled {
+			tr.Options().SetReadLockAware()
+		}
+
 		tr.Set(fdb.Key(rowKey), buf)
 		return
 	})
@@ -191,6 +210,10 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 func (db *fDB) Delete(ctx context.Context, table string, key string) error {
 	rowKey := db.getRowKey(table, key)
 	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
+		if db.drReadEnabled {
+			tr.Options().SetReadLockAware()
+		}
+
 		tr.Clear(fdb.Key(rowKey))
 		return
 	})
