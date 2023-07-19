@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
@@ -52,7 +53,7 @@ func createDB(p *properties.Properties) (ycsb.DB, error) {
 	clusterFile := p.GetString(fdbClusterFile, "/etc/foundationdb/fdb.cluster")
 	database := p.GetString(fdbDatabase, "DB")
 	apiVersion := p.GetInt(fdbAPIVersion, 710)
-	drReadEnabled := p.GetBool(fdbDrReadEnabled, true)
+	drReadEnabled := p.GetBool(fdbDrReadEnabled, false)
 	useCachedReadVersions := p.GetBool(fdbUseCachedReadVersions, false)
 	versionCacheTime, err := time.ParseDuration(p.GetString(fdbCacheVersionTime, "2s"))
 	if err != nil {
@@ -130,6 +131,9 @@ func (db *fDB) Read(ctx context.Context, table string, key string, fields []stri
 	})
 
 	if err != nil {
+		if os.Getenv("FDB_PRINT_ERRORS") != "" {
+			fmt.Println("Got fdb error: ", err)
+		}
 		return nil, err
 	} else if row == nil {
 		return nil, nil
@@ -171,7 +175,11 @@ func (db *fDB) Scan(ctx context.Context, table string, startKey string, count in
 
 		return res, nil
 	})
+
 	if err != nil {
+		if os.Getenv("FDB_PRINT_ERRORS") != "" {
+			fmt.Println("Got fdb error: ", err)
+		}
 		return nil, err
 	}
 	return res.([]map[string][]byte), nil
@@ -212,6 +220,9 @@ func (db *fDB) Update(ctx context.Context, table string, key string, values map[
 		tr.Set(fdb.Key(rowKey), buf)
 		return
 	})
+	if err != nil && os.Getenv("FDB_PRINT_ERRORS") != "" {
+		fmt.Println("Got fdb error: ", err)
+	}
 
 	return err
 }
@@ -228,26 +239,26 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 
 	rowKey := db.getRowKey(table, key)
 	_, err = db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
-		if db.drReadEnabled {
-			tr.Options().SetReadLockAware()
-		}
 
 		tr.Set(fdb.Key(rowKey), buf)
 		return
 	})
+	if err != nil && os.Getenv("FDB_PRINT_ERRORS") != "" {
+		fmt.Println("Got fdb error: ", err)
+	}
 	return err
 }
 
 func (db *fDB) Delete(ctx context.Context, table string, key string) error {
 	rowKey := db.getRowKey(table, key)
 	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
-		if db.drReadEnabled {
-			tr.Options().SetReadLockAware()
-		}
 
 		tr.Clear(fdb.Key(rowKey))
 		return
 	})
+	if err != nil && os.Getenv("FDB_PRINT_ERRORS") != "" {
+		fmt.Println("Got fdb error: ", err)
+	}
 	return err
 }
 
