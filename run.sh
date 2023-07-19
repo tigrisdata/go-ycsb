@@ -53,6 +53,8 @@ SCAN_THROTTLE_DURATION=${SCAN_THROTTLE_DURATION:-0}
 UPDATE_THROTTLE_DURATION=${UPDATE_THROTTLE_DURATION:-0}
 INSERT_THROTTLE_DURATION=${INSERT_THROTTLE_DURATION:-0}
 DELETE_THROTTLE_DURATION=${DELETE_THROTTLE_DURATION:-0}
+FDB_USE_CACHED_READ_VERSION=${FDB_USE_CACHED_READ_VERSION:-false}
+FDB_VERSION_CACHE_TIME=${FDB_VERSION_CACHE_TIME:-2s}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -150,6 +152,7 @@ function benchmark_fdb() {
 	echo "Using FDB_CLUSTER_FILE ${FDB_CLUSTER_FILE}"
 	echo "Using FDB_API_VERSION ${FDB_API_VERSION}"
 	echo "Using LOADTHREADCOUNT ${LOADTHREADCOUNT}"
+	echo "Using cached read version ${FDB_USE_CACHED_READ_VERSION}, version cache time: ${FDB_VERSION_CACHE_TIME}"
 
 	if [ ${DROPANDLOAD} -gt 0 ]
 	then
@@ -168,9 +171,9 @@ function benchmark_fdb() {
 			echo "Running benchmark"
 			if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 			then
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			else
-				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
+				timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT} > ${YCSB_LOG_FILE}
 			fi
 
 			echo "Run completed, sleeping before running again"
@@ -185,9 +188,9 @@ function benchmark_fdb() {
 				echo "Running benchmark for ${th} thread(s)"
 				if [ ${YCSB_LOGS_ON_STDOUT} -ne 0 ]
 				then
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${th}
 				else
-					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
+					timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${th} > ${YCSB_LOG_FILE}
 				fi
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done
