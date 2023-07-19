@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/magiconair/properties"
@@ -28,17 +29,23 @@ import (
 )
 
 const (
-	fdbClusterFile   = "fdb.clusterfile"
-	fdbDatabase      = "fdb.dbname"
-	fdbAPIVersion    = "fdb.apiversion"
-	fdbDrReadEnabled = "fdb.drreads"
+	fdbClusterFile           = "fdb.clusterfile"
+	fdbDatabase              = "fdb.dbname"
+	fdbAPIVersion            = "fdb.apiversion"
+	fdbDrReadEnabled         = "fdb.drreads"
+	fdbUseCachedReadVersions = "fdb.usecachedreadversions"
+	fdbCacheVersionTime      = "fdb.versioncachetime"
 )
 
 type fDB struct {
-	db            fdb.Database
-	r             *util.RowCodec
-	bufPool       *util.BufPool
-	drReadEnabled bool
+	db                    fdb.Database
+	r                     *util.RowCodec
+	bufPool               *util.BufPool
+	drReadEnabled         bool
+	useCachedReadVersions bool
+	cachedReadVersion     int64
+	readVersionCachedAt   time.Time
+	versionCacheTime      time.Duration
 }
 
 func createDB(p *properties.Properties) (ycsb.DB, error) {
@@ -46,6 +53,13 @@ func createDB(p *properties.Properties) (ycsb.DB, error) {
 	database := p.GetString(fdbDatabase, "DB")
 	apiVersion := p.GetInt(fdbAPIVersion, 710)
 	drReadEnabled := p.GetBool(fdbDrReadEnabled, true)
+	useCachedReadVersions := p.GetBool(fdbUseCachedReadVersions, false)
+	versionCacheTime, err := time.ParseDuration(p.GetString(fdbCacheVersionTime, "2s"))
+	if err != nil {
+		if useCachedReadVersions {
+			panic("Failed to parse version cache duration")
+		}
+	}
 
 	fdb.MustAPIVersion(apiVersion)
 
@@ -57,10 +71,12 @@ func createDB(p *properties.Properties) (ycsb.DB, error) {
 	bufPool := util.NewBufPool()
 
 	return &fDB{
-		db:            db,
-		r:             util.NewRowCodec(p),
-		bufPool:       bufPool,
-		drReadEnabled: drReadEnabled,
+		db:                    db,
+		r:                     util.NewRowCodec(p),
+		bufPool:               bufPool,
+		drReadEnabled:         drReadEnabled,
+		useCachedReadVersions: useCachedReadVersions,
+		versionCacheTime:      versionCacheTime,
 	}, nil
 }
 
@@ -88,11 +104,26 @@ func (db *fDB) getEndRowKey(table string) []byte {
 	return util.Slice(fmt.Sprintf("%s;", table))
 }
 
+func (db *fDB) isNewVersionNeeded() bool {
+	if time.Now().Sub(db.readVersionCachedAt) < db.versionCacheTime {
+		return false
+	}
+	return true
+}
+
 func (db *fDB) Read(ctx context.Context, table string, key string, fields []string) (map[string][]byte, error) {
 	rowKey := db.getRowKey(table, key)
 	row, err := db.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
 		if db.drReadEnabled {
 			tr.Options().SetReadLockAware()
+		}
+		if db.useCachedReadVersions {
+			if !db.isNewVersionNeeded() {
+				tr.SetReadVersion(db.cachedReadVersion)
+			} else {
+				db.cachedReadVersion = tr.GetReadVersion().MustGet()
+				db.readVersionCachedAt = time.Now()
+			}
 		}
 		f := tr.Get(fdb.Key(rowKey))
 		return f.Get()
