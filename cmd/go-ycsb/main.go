@@ -163,7 +163,7 @@ func main() {
 	closeDone := make(chan struct{}, 1)
 
 	metrics.InitializeMetrics()
-	if os.Getenv("YCSB_METRICS_OFF") != "" {
+	if os.Getenv("YCSB_METRICS_ON") != "" {
 		go metrics.ServeHTTP()
 	}
 
