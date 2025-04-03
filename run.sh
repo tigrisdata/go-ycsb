@@ -32,6 +32,7 @@ MAXSCANLENGTH=${MAXSCANLENGTH:-1000}
 SCANLENGTHDISTRIBUTION=${SCANLENGTHDISTRIBUTION:-uniform}
 FDB_USE_CACHED_READ_VERSION=${FDB_USE_CACHED_READ_VERSION:-false}
 FDB_VERSION_CACHE_TIME=${FDB_VERSION_CACHE_TIME:-2s}
+BENCHMARK_NAME_PREFIX=${BENCHMARK_NAME_PREFIX:-"UnnamedBenchmark"}
 
 WORKLOAD="recordcount=${RECORDCOUNT}
 operationcount=${OPERATIONCOUNT}
@@ -62,6 +63,7 @@ function benchmark_fdb() {
 	if [ ${STARTWITHLOAD} -gt 0 ]
 	then
 		echo "Loading new database"
+		export BENCHMARK_NAME="${BENCHMARK_NAME_PREFIX}-load"
     ${BIN_PATH}/go-ycsb load foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -P workloads/dynamic -p threadcount=${LOADTHREADCOUNT}
     echo "Load completed"
 	fi
@@ -70,6 +72,7 @@ function benchmark_fdb() {
 		while true
 		do
 			echo "Running benchmark"
+      export BENCHMARK_NAME="${BENCHMARK_NAME_PREFIX}-run"
       timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${RUNTHREADCOUNT}
 			echo "Run completed, sleeping before running again"
 			sleep ${RUNTHREADSLEEPINTERVAL}
@@ -81,6 +84,7 @@ function benchmark_fdb() {
 			for th in ${RUNTHREADCONF}
 			do
 				echo "Running benchmark for ${th} thread(s)"
+    		export BENCHMARK_NAME="${BENCHMARK_NAME_PREFIX}-run-th${th}"
         timeout ${RUNTHREADDURATION} ${BIN_PATH}/go-ycsb run foundationdb -p keyprefix="${KEY_PREFIX}" -p fdb.clusterfile="${FDB_CLUSTER_FILE}" -p fdb.apiversion="${FDB_API_VERSION}" -p fieldcount="${FIELDCOUNT}" -p fieldlength=${FIELDLENGTH} -p fdb.usecachedreadversions=${FDB_USE_CACHED_READ_VERSION} -p fdb.versioncachetime=${FDB_VERSION_CACHE_TIME} -P workloads/dynamic -p threadcount=${th}
 				sleep ${RUNTHREADSLEEPINTERVAL}
 			done

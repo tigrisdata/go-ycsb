@@ -18,9 +18,15 @@ var (
 
 func InitializeMetrics() {
 	// TODO handle the closer
+	benchmarkName := os.Getenv("BENCHMARK_NAME")
+	if benchmarkName == "" {
+		benchmarkName = "UnnamedBenchmark"
+	}
 	PromReporter = promreporter.NewReporter(promreporter.Options{})
 	RootScope, _ = tally.NewRootScope(tally.ScopeOptions{
-		Tags:           map[string]string{},
+		Tags: map[string]string{
+			"benchmark_name": benchmarkName,
+		},
 		Prefix:         "ycsb",
 		CachedReporter: PromReporter,
 		Separator:      promreporter.DefaultSeparator,
