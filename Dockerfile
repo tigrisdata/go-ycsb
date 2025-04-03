@@ -20,7 +20,7 @@ RUN GO111MODULE=on go mod download
 
 COPY . .
 
-RUN GO11MODULE=on go build -tags "foundationdb tigris release" -o /go-ycsb ./cmd/*
+RUN GO11MODULE=on go build -tags "foundationdb release" -o /go-ycsb ./cmd/*
 
 FROM ubuntu:jammy
 
@@ -30,8 +30,6 @@ COPY --from=0 /usr/local/bin/dumb-init /usr/local/bin/dumb-init
 RUN apt update && apt install -y wget && apt-get purge -y --auto-remove \
  && wget https://github.com/apple/foundationdb/releases/download/7.1.7/foundationdb-clients_7.1.7-1_amd64.deb \
  && dpkg -i foundationdb*.deb
-
-RUN wget -O - https://tigris.dev/cli-linux | tar -xz -C /usr/local/bin && chmod +x /usr/local/bin/tigris
 
 ADD workloads /workloads
 ADD run.sh /run.sh
