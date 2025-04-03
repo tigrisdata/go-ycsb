@@ -68,8 +68,6 @@ import (
 	_ "github.com/pingcap/go-ycsb/db/boltdb"
 	// Register minio
 	_ "github.com/pingcap/go-ycsb/db/minio"
-	// Register tigris
-	_ "github.com/pingcap/go-ycsb/db/tigris"
 )
 
 var (
