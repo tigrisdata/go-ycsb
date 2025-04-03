@@ -21,6 +21,7 @@ func InitializeMetrics() {
 	PromReporter = promreporter.NewReporter(promreporter.Options{})
 	RootScope, _ = tally.NewRootScope(tally.ScopeOptions{
 		Tags:           map[string]string{},
+		Prefix:         "ycsb",
 		CachedReporter: PromReporter,
 		Separator:      promreporter.DefaultSeparator,
 	}, 1*time.Second)
