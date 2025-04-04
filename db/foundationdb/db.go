@@ -240,7 +240,7 @@ func (db *fDB) Update(ctx context.Context, table string, key string, values map[
 
 func (db *fDB) BatchUpdate(ctx context.Context, table string, keys []string, values []map[string][]byte) error {
 	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
-		for _, key := range keys {
+		for keyIdx, key := range keys {
 			rowKey := db.getRowKey(table, key)
 			if db.drReadEnabled {
 				tr.Options().SetReadLockAware()
@@ -259,7 +259,8 @@ func (db *fDB) BatchUpdate(ctx context.Context, table string, keys []string, val
 				return nil, err
 			}
 
-			for field, value := range values {
+			singleKeyValues := values[keyIdx]
+			for field, value := range singleKeyValues {
 				data[field] = value
 			}
 
@@ -305,9 +306,8 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 }
 
 func (db *fDB) BatchInsert(ctx context.Context, table string, keys []string, values []map[string][]byte) error {
-	res := make([]map[string][]byte, len(keys))
 	for _, key := range keys {
-		err := db.Insert(ctx, table, keys, values)
+		err := db.Insert(ctx, table, key, values)
 		if err != nil {
 			return err
 		}
@@ -329,9 +329,8 @@ func (db *fDB) Delete(ctx context.Context, table string, key string) error {
 }
 
 func (db *fDB) BatchDelete(ctx context.Context, table string, keys []string) error {
-	res := make([]map[string][]byte, len(keys))
 	for _, key := range keys {
-		err := db.Delete(ctx, table, keys, values)
+		err := db.Delete(ctx, table, key)
 		if err != nil {
 			return err
 		}
