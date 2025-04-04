@@ -142,6 +142,14 @@ func (db *fDB) Read(ctx context.Context, table string, key string, fields []stri
 	return db.r.Decode(row.([]byte), fields)
 }
 
+func (db *fdb) BatchRead(ctx context.Context, table string, keys []string, fields []string) ([]map[string][]byte, error) {
+	res := make([]map[string][]byte, len(keys))
+	for key := range keys {
+		res = append(res, db.Read(ctx, table, keys[key], fields))
+	}
+	return res
+}
+
 func (db *fDB) Scan(ctx context.Context, table string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
 	rowKey := db.getRowKey(table, startKey)
 	res, err := db.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
@@ -227,6 +235,50 @@ func (db *fDB) Update(ctx context.Context, table string, key string, values map[
 	return err
 }
 
+func (db *fDB) BatchUpdate(ctx context.Context, table string, keys []string, values []map[string][]byte) error {
+	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
+		for key := range keys {
+			rowKey := db.getRowKey(table, key)
+			if db.drReadEnabled {
+				tr.Options().SetReadLockAware()
+			}
+
+			f := tr.Get(fdb.Key(rowKey))
+			row, err := f.Get()
+			if err != nil {
+				return nil, err
+			} else if row == nil {
+				return nil, nil
+			}
+
+			data, err := db.r.Decode(row, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			for field, value := range values {
+				data[field] = value
+			}
+
+			buf := db.bufPool.Get()
+			defer db.bufPool.Put(buf)
+
+			buf, err = db.r.Encode(buf, data)
+			if err != nil {
+				return nil, err
+			}
+
+			tr.Set(fdb.Key(rowKey), buf)
+		}
+		return
+	})
+	if err != nil && os.Getenv("FDB_PRINT_ERRORS") != "" {
+		fmt.Println("Got fdb error: ", err)
+	}
+
+	return err
+}
+
 func (db *fDB) Insert(ctx context.Context, table string, key string, values map[string][]byte) error {
 	// Simulate TiDB data
 	buf := db.bufPool.Get()
@@ -249,6 +301,17 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 	return err
 }
 
+func (db *fDB) BatchInsert(ctx context.Context, table string, keys []string, values []map[string][]byte) error {
+	res := make([]map[string][]byte, len(keys))
+	for key := range keys {
+		err := db.Insert(ctx, table, keys, values)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (db *fDB) Delete(ctx context.Context, table string, key string) error {
 	rowKey := db.getRowKey(table, key)
 	_, err := db.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
@@ -260,6 +323,17 @@ func (db *fDB) Delete(ctx context.Context, table string, key string) error {
 		fmt.Println("Got fdb error: ", err)
 	}
 	return err
+}
+
+func (db *fDB) BatchDelete(ctx context.Context, table string, keys []string) error {
+	res := make([]map[string][]byte, len(keys))
+	for key := range keys {
+		err := db.Delete(ctx, table, keys, values)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type fdbCreator struct {
