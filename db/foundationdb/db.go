@@ -306,8 +306,8 @@ func (db *fDB) Insert(ctx context.Context, table string, key string, values map[
 }
 
 func (db *fDB) BatchInsert(ctx context.Context, table string, keys []string, values []map[string][]byte) error {
-	for _, key := range keys {
-		err := db.Insert(ctx, table, key, values)
+	for keyIdx, key := range keys {
+		err := db.Insert(ctx, table, key, values[keyIdx])
 		if err != nil {
 			return err
 		}
