@@ -142,7 +142,7 @@ func (db *fDB) Read(ctx context.Context, table string, key string, fields []stri
 	return db.r.Decode(row.([]byte), fields)
 }
 
-func (db *fdb) BatchRead(ctx context.Context, table string, keys []string, fields []string) ([]map[string][]byte, error) {
+func (db *fDB) BatchRead(ctx context.Context, table string, keys []string, fields []string) ([]map[string][]byte, error) {
 	res := make([]map[string][]byte, len(keys))
 	for _, key := range keys {
 		val, err := db.Read(ctx, table, key, fields)
