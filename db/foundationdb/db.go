@@ -145,9 +145,13 @@ func (db *fDB) Read(ctx context.Context, table string, key string, fields []stri
 func (db *fdb) BatchRead(ctx context.Context, table string, keys []string, fields []string) ([]map[string][]byte, error) {
 	res := make([]map[string][]byte, len(keys))
 	for key := range keys {
-		res = append(res, db.Read(ctx, table, keys[key], fields))
+		val, err := db.Read(ctx, table, key, fields)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, val)
 	}
-	return res
+	return res, nil
 }
 
 func (db *fDB) Scan(ctx context.Context, table string, startKey string, count int, fields []string) ([]map[string][]byte, error) {
@@ -180,7 +184,6 @@ func (db *fDB) Scan(ctx context.Context, table string, startKey string, count in
 			}
 
 		}
-
 		return res, nil
 	})
 
