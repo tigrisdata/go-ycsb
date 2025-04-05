@@ -53,6 +53,7 @@ func (m *measurement) measure(op string, lan time.Duration) {
 func (m *measurement) output() {
 	m.RLock()
 	defer m.RUnlock()
+
 	keys := make([]string, len(m.opMeasurement))
 	var i = 0
 	for k := range m.opMeasurement {
@@ -62,8 +63,13 @@ func (m *measurement) output() {
 	sort.Strings(keys)
 
 	for _, op := range keys {
+		meas, opExists := m.opMeasurement[op]
+		if !opExists {
+			continue
+		}
+
 		fmt.Printf("%-6s - %s\n", op, m.opMeasurement[op].Summary())
-		info := m.opMeasurement[op].Info()
+		info := meas.Info()
 		qps := info.Get("QPS").(float64)
 		p50 := float64(info.Get("PER50TH").(int64))
 		p95 := float64(info.Get("PER95TH").(int64))
