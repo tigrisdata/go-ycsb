@@ -53,6 +53,11 @@ func (m *measurement) measure(op string, lan time.Duration) {
 func (m *measurement) output() {
 	m.RLock()
 	defer m.RUnlock()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("RECOVERED")
+		}
+	}()
 
 	keys := make([]string, len(m.opMeasurement))
 	var i = 0
