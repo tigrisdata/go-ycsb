@@ -7,7 +7,7 @@ RUN apt update && apt install -y golang git wget
 RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_amd64 \
  && chmod +x /usr/local/bin/dumb-init
 
-RUN wget https://github.com/apple/foundationdb/releases/download/7.1.7/foundationdb-clients_7.1.7-1_amd64.deb \
+RUN wget https://github.com/apple/foundationdb/releases/download/7.3.63/foundationdb-clients_7.3.63-1_amd64.deb \
  && dpkg -i foundationdb*.deb
 
 RUN mkdir -p /go/src/github.com/pingcap/go-ycsb
@@ -28,7 +28,7 @@ COPY --from=0 /go-ycsb /go-ycsb
 COPY --from=0 /usr/local/bin/dumb-init /usr/local/bin/dumb-init
 
 RUN apt update && apt install -y wget && apt-get purge -y --auto-remove \
- && wget https://github.com/apple/foundationdb/releases/download/7.1.7/foundationdb-clients_7.1.7-1_amd64.deb \
+ && wget https://github.com/apple/foundationdb/releases/download/7.3.63/foundationdb-clients_7.3.63-1_amd64.deb \
  && dpkg -i foundationdb*.deb
 
 ADD workloads /workloads

@@ -52,7 +52,7 @@ type fDB struct {
 func createDB(p *properties.Properties) (ycsb.DB, error) {
 	clusterFile := p.GetString(fdbClusterFile, "/etc/foundationdb/fdb.cluster")
 	database := p.GetString(fdbDatabase, "DB")
-	apiVersion := p.GetInt(fdbAPIVersion, 710)
+	apiVersion := p.GetInt(fdbAPIVersion, 730)
 	drReadEnabled := p.GetBool(fdbDrReadEnabled, false)
 	useCachedReadVersions := p.GetBool(fdbUseCachedReadVersions, false)
 	versionCacheTime, err := time.ParseDuration(p.GetString(fdbCacheVersionTime, "2s"))
