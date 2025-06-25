@@ -213,7 +213,10 @@ func (db *s3DB) Scan(ctx context.Context, table string, startKey string, count i
 	remaining := count - len(results)
 
 	for remaining > 0 {
-		maxKeys := min(int32(remaining), 1000)
+		maxKeys := int32(remaining)
+		if maxKeys > 1000 {
+			maxKeys = 1000
+		}
 
 		out, err := db.client.ListObjectsV2(ctx, &awss3.ListObjectsV2Input{
 			Bucket:            &db.bucket,
